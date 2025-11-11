@@ -1,30 +1,37 @@
-# 🚗 Databricks Insurance Claims Automation Project
+# 🚗 Car Insurance Claims Automation with Databricks
 
-**End-to-end data engineering and ML project for learning Databricks Lakehouse Platform**
+**End-to-end data engineering and ML project demonstrating modern lakehouse architecture**
 
 [![Databricks](https://img.shields.io/badge/Databricks-FF3621?logo=databricks&logoColor=white)](https://databricks.com)
 [![AWS](https://img.shields.io/badge/AWS-232F3E?logo=amazon-aws&logoColor=white)](https://aws.amazon.com)
-[![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://python.org)
+[![SQL](https://img.shields.io/badge/SQL-4479A1?logo=postgresql&logoColor=white)](https://www.databricks.com/glossary/what-is-sql)
 
 ---
 
 ## 📋 Project Overview
 
-Automated car insurance claims processing system demonstrating:
-- **Unity Catalog governance** (medallion architecture)
-- **Multi-source data ingestion** (SQL Server CDC, Kinesis streams, S3 Auto Loader)
-- **ML-based damage classification** (Computer vision with MLflow)
-- **Real-time dashboards** (Databricks SQL + AI/BI)
-- **Web application** (Databricks Apps for claims portal)
+Automated car insurance claims processing system built on **Databricks Lakehouse Platform**. Ingests multi-source data (SQL Server, Kinesis streams, S3), applies ML-based damage classification, and provides real-time claims validation through dashboards and web applications.
 
-### Business Use Case
-**Problem**: Manual insurance claims processing is slow, error-prone, and expensive.
+### Business Problem
 
-**Solution**: Automated claims validation system that:
-- ✅ Verifies driver speed from telematics data
-- ✅ Checks policy eligibility for refunds
-- ✅ Classifies car damage severity using ML image analysis
-- ✅ Provides real-time analytics for claim approval decisions
+Manual claims processing is slow, error-prone, and expensive. This system:
+- ✅ Automates claims validation (speed, eligibility, damage assessment)
+- ✅ Reduces processing time from days to minutes
+- ✅ ML-driven fraud detection via image classification
+- ✅ Unified data platform for analytics
+
+### Technologies Used
+
+| Layer         | Technology         | Purpose                                |
+|---------------|-------------------|----------------------------------------|
+| Cloud         | AWS               | S3 storage, Kinesis streaming, RDS     |
+| Data Platform | Databricks        | Lakehouse, Unity Catalog, LakeFlow      |
+| Storage       | Delta Lake        | ACID transactions, time travel, CDC    |
+| Orchestration | LakeFlow Pipelines| ETL/ELT automation                     |
+| ML Framework  | MLflow + Mosaic AI| Model training, tracking, serving      |
+| BI/Analytics  | Databricks SQL + Genie | Dashboards, natural language queries|
+| Applications  | Databricks Apps   | Claims submission portal               |
 
 ---
 
@@ -32,140 +39,149 @@ Automated car insurance claims processing system demonstrating:
 
 ### Medallion Architecture
 
-┌─────────────┐ ┌──────────────┐ ┌─────────────┐
-│ SQL Server │ │ Kinesis │ │ S3 Images │
-│ (CDC) │ │ (Streaming) │ │(Auto Loader)│
-└──────┬──────┘ └──────┬───────┘ └──────┬──────┘
-│ │ │
-└────────┬────────┴──────────────────┘
-│
-┌──────▼──────┐
-│ LANDING │ (Raw files/volumes)
-└──────┬──────┘
-│
-┌──────▼──────┐
-│ BRONZE │ (Raw Delta tables)
-└──────┬──────┘
-│ Data Quality + Cleaning
-┌──────▼──────┐
-│ SILVER │ (Validated data)
-└──────┬──────┘
-│ Aggregations + ML
-┌──────▼──────┐
-│ GOLD │ (Analytics-ready)
-└──────┬──────┘
-│
-┌─────────┴──────────┐
-│ │
-┌────▼─────┐ ┌───────▼────┐
-│Dashboards│ │Claims Portal│
-│ + Genie │ │ (App) │
-└──────────┘ └─────────────┘
+The Medallion Architecture (Bronze → Silver → Gold) organizes the data pipeline for clarity and governance:
+
+- **Bronze**: Raw ingested data (as-is, no business logic)
+- **Silver**: Cleaned and validated data (DQT, business rules)
+- **Gold**: Analytics-ready, aggregated data
+
+Flow:
+```
+SQL Server (CDC)         Kinesis          S3 Images
+      |                    |                 |
+LakeFlow Connect      LakeFlow Streaming   AutoLoader
+      |                    |                 |
+               LANDING (raw files)
+                       |
+              BRONZE (raw Delta tables)
+                       |
+                Data Cleaning, QA
+                       |
+               SILVER (validated data)
+                       |
+           Aggregations, ML/Analytics
+                       |
+               GOLD (business outputs)
+```
+
+---
 
 ### Unity Catalog Structure
 
+```
 smart_claims_dev (Catalog)
-├── landing - Raw file ingestion
-├── bronze - Raw Delta tables
-├── silver - Cleaned & validated
-└── gold - Analytics aggregates
----
+├── landing  # Landing zone/raw files
+├── bronze   # Raw Delta tables
+├── silver   # Cleaned + validated data
+└── gold     # Analytics-ready/aggregates
+```
 
-## 🛠️ Technologies
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Cloud Platform** | AWS (Free Tier) | S3, Kinesis, EC2 |
-| **Data Platform** | Databricks Free Edition | Lakehouse, Unity Catalog |
-| **Storage** | Delta Lake | ACID transactions, time travel |
-| **Orchestration** | LakeFlow Pipelines | ETL automation |
-| **ML** | MLflow + Mosaic AI | Model tracking, serving |
-| **Database** | SQL Server (Docker) | Source data with CDC |
-| **Version Control** | Git + GitHub | Code management |
+Each "schema" maps to a medallion zone; governance is handled at this level.
 
 ---
 
 ## 📁 Project Structure
 
+```
 databricks-insurance-claims-project/
-├── sql_queries.sql # Unity Catalog setup + transformations
-├── notebooks/ # (Future) Python notebooks
-├── pipelines/ # (Future) LakeFlow pipeline configs
-├── data/ # (Future) Sample datasets
-└── docs/ # (Future) Documentation
+├── notebooks/
+│   ├── 01_setup/              # Unity Catalog, initial scripts
+│   ├── 02_ingestion/          # Data pipelines (Kinesis, SQL Server, S3)
+│   ├── 03_transformations/    # Bronze → Silver → Gold ETL
+│   ├── 04_ml/                 # ML model notebooks
+│   └── 05_apps/               # Databricks App notebooks
+├── docker/
+│   └── sql_server/            # Local SQL Server for CDC
+├── data/
+│   └── sample_data/           # Demo datasets
+├── docs/
+│   └── architecture.png       # Diagrams
+└── README.md
+```
 
 ---
 
-## 🚀 Progress Tracker
+## 📊 Features Implemented
 
-### ✅ Completed
-- [x] Unity Catalog created (`smart_claims_dev`)
-- [x] Medallion architecture schemas (landing/bronze/silver/gold)
-- [x] Git integration with GitHub
-- [x] Databricks Free Edition workspace setup
+#### ✅ Phase 1: Data Ingestion
+- [x] SQL Server CDC ingestion (LakeFlow Connect)
+- [x] Real-time streaming from Kinesis
+- [x] S3 Auto Loader for images & metadata
 
-### 🔄 In Progress
-- [ ] AWS S3 bucket configuration
-- [ ] SQL Server Docker setup with CDC
-- [ ] Kinesis data stream ingestion
+#### ✅ Phase 2: Data Transformations
+- [x] Medallion architecture (Bronze → Silver → Gold)
+- [x] Data quality validations (DLT expectations)
 
-### 📋 Planned
-- [ ] LakeFlow Connect (SQL Server CDC)
-- [ ] Auto Loader (S3 file ingestion)
-- [ ] Bronze → Silver transformations
-- [ ] Silver → Gold aggregations
-- [ ] ML model training (car damage classifier)
-- [ ] Databricks SQL dashboards
-- [ ] Genie AI/BI interface
-- [ ] Claims submission portal (Databricks Apps)
+#### ✅ Phase 3: Machine Learning
+- [ ] Car damage classifier (ResNet, MLflow)
+- [ ] Model serving via REST API
+
+#### ✅ Phase 4: Analytics & Apps
+- [ ] SQL dashboards (claims KPIs)
+- [ ] Genie interface (NLQ)
+- [ ] Claims submission portal
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Install:
+- Python 3.13+
+- Docker Desktop
+- AWS CLI v2.24+
+- Git
+
+Accounts:
+- Databricks Free/Trial Edition
+- AWS Free Tier
+- GitHub
+
+### Setup Instructions
+
+#### 1. Clone Repository
+
+```bash
+git clone https://github.com/dilip-ch-dev/databricks-insurance-claims-project.git
+cd databricks-insurance-claims-project
+```
+
+#### 2. AWS Configure
+
+```bash
+aws configure
+# Enter Access/Secret/Region
+```
+
+#### 3. Run SQL Server (Docker)
+```bash
+cd docker/sql_server
+docker-compose up -d
+```
 
 ---
 
 ## 🎓 Learning Outcomes
 
-**Data Engineering**:
-- Unity Catalog governance
-- Medallion architecture pattern
-- Change Data Capture (CDC)
-- Stream processing
-- Delta Lake optimization
-
-**Machine Learning**:
-- Computer vision (ResNet)
-- MLflow lifecycle management
-- Model serving endpoints
-
-**Cloud & DevOps**:
-- AWS integration (S3/Kinesis)
-- Docker containerization
-- Git version control
+- **Data Engineering**: Medallion patterns, Unity Catalog, CDC, streaming, Delta Lake
+- **ML Engineering**: Computer vision, MLflow tracking, model deployment
+- **Cloud/DevOps**: AWS integration, Docker, Git/GitHub best practices
 
 ---
 
-## 📝 Documentation
+## 📝 License
 
-- **Setup Guide**: See `sql_queries.sql` for step-by-step Unity Catalog setup
-- **Tutorial Reference**: Based on [Thomas Hass - Databricks Zero to Hero](https://youtu.be/gFAnlTM-3Zo)
-- **Code Repository**: [GitHub - datamyselfai/databricks-zero-to-hero-course](https://github.com/datamyselfai/databricks-zero-to-hero-course)
+MIT License
 
 ---
 
 ## 👤 Author
 
-**[Your Name]**  
-📧 Email: dilip77950@gmail.com  
-💼 LinkedIn: [Add your LinkedIn profile]  
-🎯 Goal: Master Databricks for data engineering roles
+**[Your Name]**
+- GitHub: [@dilip-ch-dev](https://github.com/dilip-ch-dev)
+- LinkedIn: [your-linkedin](https://linkedin.com/in/your-profile)
 
 ---
 
-## 📄 License
-
-MIT License - Free to use for learning purposes
-
----
-
-**⭐ Star this repo if you find it helpful for your Databricks learning journey!**
-
-*Last Updated: November 10, 2025*
-
+**⭐ Star this repo if it helps you!**
