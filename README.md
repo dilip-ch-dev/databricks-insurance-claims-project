@@ -170,17 +170,12 @@ docker-compose up -d
 
 ---
 
-## 📝 License
-
-MIT License
-
----
 
 ## 👤 Author
 
-**[Your Name]**
+- Dilip Chikatla
 - GitHub: [@dilip-ch-dev](https://github.com/dilip-ch-dev)
-- LinkedIn: [your-linkedin](https://linkedin.com/in/your-profile)
+- LinkedIn: https://www.linkedin.com/in/dilipchikatla/
 
 ---
 
