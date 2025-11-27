@@ -27,32 +27,33 @@
 
 ### **Medallion Architecture (Bronze → Silver → Gold)**
 
+```
 Raw Data Sources
 ├─ CSV Ingestion (Auto Loader)
 ├─ Customer Data
 ├─ Claims Data
 ├─ Policy Data
 └─ Telematics Events
-↓
-BRONZE LAYER
-37,289 raw records
-↓
-SILVER LAYER
-31,504 validated records (84.5% quality)
-- Date format standardization
-- Null handling & deduplication
-- Business rule validation
-- Audit timestamp tracking
-↓
-GOLD LAYER
-31,329 analytics-ready records
-├─ Claims aggregations by date/severity
-├─ Collision type analysis
-├─ Customer behavior metrics
-├─ Driver risk scoring
-├─ ML features for fraud detection
-└─ Fraud detection scores
-
+         ↓
+    BRONZE LAYER
+    37,289 raw records
+         ↓
+    SILVER LAYER
+    31,504 validated records (84.5% quality)
+    • Date format standardization
+    • Null handling & deduplication
+    • Business rule validation
+    • Audit timestamp tracking
+         ↓
+    GOLD LAYER
+    31,329 analytics-ready records
+    ├─ Claims aggregations by date/severity
+    ├─ Collision type analysis
+    ├─ Customer behavior metrics
+    ├─ Driver risk scoring
+    ├─ ML features for fraud detection
+    └─ Fraud detection scores
+```
 
 ### **Data Quality Results**
 
@@ -74,6 +75,7 @@ GOLD LAYER
 
 ### **Fraud Detection Model**
 
+```
 Training Data: 10,733 claims (8,666 train / 2,067 test)
 
 Features (12):
@@ -87,7 +89,7 @@ Performance:
 ├─ AUC-ROC: 1.0000 ✅
 ├─ True Positives: High detection rate
 └─ Predictions: Fraud probability scoring
-
+```
 
 **Model Output:** `smart_claims_dev.gold.fraud_detection_scores`
 - claim_id
@@ -101,26 +103,66 @@ Performance:
 
 ### **Databricks Workflow: smart_claims_full_pipeline**
 
+```
 Automated DAG (Directed Acyclic Graph):
 
-bronze_claims (05_silver_claims)
-├─ silver_customers (06_silver_customers)
-│  └─ gold_layer (09_gold_claims)
-└─ silver_policies (07_silver_policies)
-   └─ gold_layer (09_gold_claims)
+    ┌─ bronze_claims (05_silver_claims)
+    │
+    ├─────────────────────┬──────────────────────┐
+    │                     │                      │
+    ▼                     ▼                      ▼
+silver_customers   silver_policies          (parallel)
+(06_silver_customers) (07_silver_policies)
+    │                     │
+    └─────────────────────┴──────────────────────┐
+                                                 │
+                                                 ▼
+                                        gold_layer
+                                    (09_gold_claims)
+```
 
-Execution:
+**Execution Details:**
+- Task 1: `bronze_claims` (05_silver_claims) - No dependencies
+- Task 2: `silver_customers` (06_silver_customers) - Depends on Task 1
+- Task 3: `silver_policies` (07_silver_policies) - Depends on Task 1
+- Task 4: `gold_layer` (09_gold_claims) - Depends on Tasks 2 & 3
 
-~Max concurrent runs: 1 
+**Configuration:**
+- Max concurrent runs: 1
+- Timeout: 3600 seconds per task
+- Cluster: Autoscaling (i3.xlarge, 1 worker)
+- Trigger: Manual or scheduled
 
-~Timeout: 3600 seconds
+---
 
-~Cluster: Auto-scaling i3.xlarge
+## 📁 Repository Structure
 
-~Trigger: Manual or scheduled
+```
+databricks-insurance-claims-project/
+├── notebooks/
+│   ├── 05_silver_claims.py              (Claims data quality)
+│   ├── 06_silver_customers.py           (Customer transformation)
+│   ├── 07_silver_policies.py            (Policy transformation)
+│   ├── 08_silver_telematics.py          (Telematics transformation)
+│   ├── 09_gold_claims.py                (Gold aggregations + analytics)
+│   ├── 10_workflow_orchestration.py     (Databricks Workflows DAG)
+│   ├── 11_ml_fraud_detection.py         (ML fraud detection model)
+│   └── 12_dashboard_queries.sql         (Analytics dashboard queries)
+├── terraform/                            (Infrastructure as Code)
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+└── README.md
+```
 
-
-**End-to-end pipeline runs automatically with dependency management.**
+**Key Notebooks:**
+- `05_silver_claims`: Date standardization, age validation, deduplication
+- `06_silver_customers`: Customer record validation
+- `07_silver_policies`: Policy data transformation
+- `08_silver_telematics`: Telematics event processing
+- `09_gold_claims`: Aggregations (5 Gold tables) + ML feature creation
+- `11_ml_fraud_detection`: Logistic Regression model (AUC-ROC 1.0)
+- `12_dashboard_queries`: 5 analytics SQL queries
 
 ---
 
@@ -152,87 +194,73 @@ Execution:
 
 ---
 
-## 📁 Repository Structure
-
-databricks-insurance-claims-project/
-├── notebooks/
-│ ├── 01_csv_ingestion.py (Bronze CSV ingestion)
-│ ├── 02_elt_pipeline.py (Schema standardization)
-│ ├── 03_claims_integration.py (Data reconciliation)
-│ ├── 04_bronze_summary.py (Quality validation)
-│ ├── 05_silver_claims.py (Claims transformation)
-│ ├── 06_silver_customers.py (Customers transformation)
-│ ├── 07_silver_policies.py (Policies transformation)
-│ ├── 08_silver_telematics.py (Telematics transformation)
-│ ├── 09_gold_claims.py (Gold aggregations)
-│ ├── 10_workflow_orchestration.py (Workflow setup)
-│ ├── 11_ml_fraud_detection.py (ML model training)
-│ └── 12_dashboard_queries.sql (Analytics dashboard)
-├── terraform/
-│ ├── main.tf (Databricks + AWS provisioning)
-│ ├── variables.tf (Configuration variables)
-│ └── outputs.tf (Resource outputs)
-├── scripts/
-│ └── data_generator.py (Test data generation)
-└── README.md
-
-
----
-
-## 🚀 Key Learnings
-
-### **Data Engineering Challenges Solved**
-
-1. **Mixed Date Formats**
-   - Problem: Dates in MM-DD-YYYY, DD-MM-YYYY, YYYY-MM-DD formats
-   - Solution: `try_to_date()` + SQL CASE WHEN for safe casting
-   - Impact: Enabled 82.6% claims quality pass rate
-
-2. **String "null" vs SQL NULL**
-   - Problem: Literal "null" strings vs actual NULL values
-   - Solution: Explicit CASE WHEN checks for both types
-   - Impact: Caught 48.5% invalid customer records
-
-3. **Deduplication at Scale**
-   - Problem: Duplicate records across sources
-   - Solution: Window functions `row_number() over partitions`
-   - Impact: Reduced data redundancy by 17.4%
-
-4. **Production-Grade Quality Tracking**
-   - Problem: Understanding data rejection reasons
-   - Solution: Audit columns with `current_timestamp()` + rejection tracking
-   - Impact: Full data lineage and compliance audit trail
-
-### **Free Edition Optimization**
-
-- ✅ Pivoted from AWS Kinesis to Databricks Auto Loader (eliminated $40/month cost)
-- ✅ Used serverless compute (auto-scaling clusters)
-- ✅ CPU-friendly ML models (no GPU required)
-- ✅ Efficient Workflow orchestration (5-task limit respected)
-
----
-
 ## 📈 Performance Metrics
 
-Pipeline Execution:
-├─ Bronze ingestion: ~30 seconds (37,289 rows)
-├─ Silver transformation: ~1 minute (per table)
-├─ Gold aggregations: ~45 seconds (5 tables)
-├─ ML model training: ~2 minutes (10,733 samples)
-└─ Total end-to-end: ~5-6 minutes
+### **Data Processing (End-to-End Pipeline)**
 
-Data Quality:
-├─ Bronze → Silver: 84.5% pass rate
-├─ Invalid records identified: 5,785 (17.4%)
-├─ Duplicate removal: Window function dedup
-└─ Audit coverage: 100% (timestamp on all records)
+```
+Bronze Ingestion:       37,289 rows ingested
+                        ├─ Claims: 12,991
+                        ├─ Customers: 7,061
+                        ├─ Policies: 12,237
+                        └─ Telematics: 5,000
 
-ML Performance:
-├─ Fraud detection AUC-ROC: 1.0000
-├─ Test set accuracy: 100%
-├─ Features engineered: 12
-└─ Training samples: 10,733
+Silver Transformation:  31,504 rows validated (84.5% pass rate)
+                        ├─ Claims: 10,733 (82.6% pass)
+                        ├─ Customers: 3,636 (51.5% pass)
+                        ├─ Policies: 12,135 (99.2% pass)
+                        └─ Telematics: 5,000 (100% pass)
 
+Quality Issues Caught:  5,785 invalid records rejected (17.4%)
+                        ├─ Claims: 2,258 rejected
+                        ├─ Customers: 3,425 rejected
+                        ├─ Policies: 102 rejected
+                        └─ Telematics: 0 rejected
+
+Gold Analytics:         31,329 aggregated records
+                        ├─ claims_by_date_severity: 284 rows
+                        ├─ claims_by_collision_type: 4 rows
+                        ├─ customer_metrics: 10,211 rows
+                        ├─ driver_risk_scores: 101 rows
+                        ├─ ml_features: 10,733 rows
+                        └─ fraud_detection_scores: 10,733 rows
+```
+
+### **ML Model Performance**
+
+```
+Training Data:          10,733 claims
+                        ├─ Train: 8,666 (80%)
+                        └─ Test: 2,067 (20%)
+
+Features Engineered:    12 total
+                        ├─ Customer features: 2 (age, tenure)
+                        ├─ Claim features: 3 (amount, severity)
+                        ├─ Risk indicators: 4 (suspicious, no witnesses, new customer)
+                        └─ Accident characteristics: 3 (vehicles, damage type)
+
+Model: Logistic Regression
+                        ├─ AUC-ROC: 1.0000 ✅
+                        ├─ Test accuracy: 100%
+                        ├─ True positive rate: 100%
+                        └─ False positive rate: 0%
+```
+
+### **Execution Time**
+
+```
+Bronze CSV Ingestion:           ~30 seconds (37K rows)
+Silver Claims Transform:        ~45 seconds (10.7K rows)
+Silver Customers Transform:     ~30 seconds (3.6K rows)
+Silver Policies Transform:      ~30 seconds (12K rows)
+Silver Telematics Transform:    ~20 seconds (5K rows)
+Gold Aggregations:              ~45 seconds (5 tables)
+ML Model Training:              ~2 minutes (10.7K samples)
+───────────────────────────────────────────────────────
+Total End-to-End:               ~5-6 minutes (full pipeline)
+
+Workflow Orchestration: Automated DAG with dependency management
+```
 
 ---
 
@@ -269,12 +297,6 @@ Data Engineer | AWS • Databricks • Snowflake | Building production lakehouse
 - **GitHub:** https://github.com/dilip-ch-dev
 - **LinkedIn:** https://www.linkedin.com/in/dilipchikatla/
 - **Email:** dilip77950@gmail.com
-
----
-
-## 📄 License
-
-Open source for portfolio and learning purposes.
 
 ---
 
